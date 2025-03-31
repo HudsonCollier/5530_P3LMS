@@ -58,14 +58,12 @@ namespace LMS.Controllers
                 return Json(new { success = false });
             }
 
-            
             Department dNew = new Department();
             dNew.Name = name;
             dNew.Subject = subject;
             db.Departments.Add(dNew);
             db.SaveChanges();
             return Json(new { success = true });
-            
         }
 
 
