@@ -200,7 +200,8 @@ namespace LMS.Areas.Identity.Pages.Account
                 s.FirstName = firstName;
                 s.LastName = lastName;
                 s.Dob = DateOnly.FromDateTime(DOB);
-                s.Major = departmentAbbrev;
+                s.Major = departmentAbbrev; ;
+                s.UId = generateNewUID();
                 db.Students.Add( s );
                 db.SaveChanges();
                 return s.UId;
@@ -213,6 +214,7 @@ namespace LMS.Areas.Identity.Pages.Account
                 a.FirstName = firstName;
                 a.LastName = lastName;
                 a.Dob = DateOnly.FromDateTime(DOB);
+                a.UId = generateNewUID();
                 db.Admins.Add(a);
                 db.SaveChanges();
                 return a.UId;
@@ -226,6 +228,7 @@ namespace LMS.Areas.Identity.Pages.Account
                 p.LastName = lastName;
                 p.Dob = DateOnly.FromDateTime(DOB);
                 p.Department = departmentAbbrev;
+                p.UId = generateNewUID();
                 db.Professors.Add(p);
                 db.SaveChanges();
                 return p.UId;
@@ -234,6 +237,47 @@ namespace LMS.Areas.Identity.Pages.Account
 
             return "unknown";
         }
+
+        private string generateNewUID()
+        {
+            string studentUID = db.Students
+                                     .Where(s => s.UId != null)
+                                     .OrderByDescending(s => s.UId)
+                                     .Select(s => s.UId)
+                                     .FirstOrDefault();
+
+            string adminUID = db.Admins
+                                   .Where(a => a.UId != null)
+                                   .OrderByDescending(a => a.UId)
+                                   .Select(a => a.UId)
+                                   .FirstOrDefault();
+
+            string professorsUID = db.Professors
+                                  .Where(p => p.UId != null)
+                                  .OrderByDescending(p => p.UId)
+                                  .Select(p => p.UId)
+                                  .FirstOrDefault();
+            if (studentUID == null) {
+                studentUID = "u0000000";
+            }
+            if (professorsUID == null)
+            {
+                professorsUID = "u0000000";
+            }
+            if (adminUID == null)
+            {
+                adminUID = "u0000000";
+            }
+
+            int studentNum = int.Parse(studentUID.Substring(1));
+            int adminNum = int.Parse(adminUID.Substring(1));
+            int profNum = int.Parse(professorsUID.Substring(1));
+
+            int newUID = Math.Max(studentNum, Math.Max(adminNum, profNum)) + 1;
+
+            return "u" + newUID.ToString("D7");
+        }
+
 
         /*******End code to modify********/
     }
