@@ -33,7 +33,7 @@ namespace LMS.Controllers
             var query = from d in db.Departments
                         select d;
             return Json(query.ToArray());
-                        
+                     
         }
 
 
@@ -50,9 +50,24 @@ namespace LMS.Controllers
         /// </summary>
         /// <returns>The JSON array</returns>
         public IActionResult GetCatalog()
-        {            
-            return Json(null);
+        {
+            var query = from d in db.Departments
+                        select new
+                        {
+                            subject = d.Subject,
+                            dname = d.Name,
+                            courses = (from c in db.Courses
+                                       where c.Subject == d.Subject
+                                       select new
+                                       {
+                                           number = c.Num,
+                                           cname = c.Name,
+                                       }).ToArray()
+                        };
+
+            return Json(query.ToArray());
         }
+
 
         /// <summary>
         /// Returns a JSON array of all class offerings of a specific course.
@@ -69,8 +84,27 @@ namespace LMS.Controllers
         /// <param name="number">The course number, as in 5530</param>
         /// <returns>The JSON array</returns>
         public IActionResult GetClassOfferings(string subject, int number)
-        {            
-            return Json(null);
+        {
+            var query = from c in db.Courses
+                        join cl in db.Classes on
+                        c.CourseId equals cl.CourseId
+                        join p in db.Professors
+                        on cl.Teacher equals p.UId
+                        where c.Subject == subject && c.Num == number
+
+                        select new
+                        {
+                            season = cl.Season,
+                            year = cl.Semester,
+                            location = cl.Location,
+                            start = cl.StartTime,
+                            end = cl.EndTime,
+                            fname = p.FirstName,
+                            lname = p.LastName,
+                            
+                        };
+
+            return Json(query.ToArray());
         }
 
         /// <summary>
@@ -86,8 +120,16 @@ namespace LMS.Controllers
         /// <param name="asgname">The name of the assignment in the category</param>
         /// <returns>The assignment contents</returns>
         public IActionResult GetAssignmentContents(string subject, int num, string season, int year, string category, string asgname)
-        {            
-            return Content("");
+        {
+            var query = from c in db.Courses join cl in db.Classes on c.CourseId equals cl.CourseId
+                        join ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
+                        join a in db.Assignments on ac.CategoryId equals a.CategoryId
+                        where c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year && ac.Name == category && a.Name == asgname
+                        select new
+                        {
+                            contents = a.Contents
+                        };
+            return Content(query.ToString());
         }
 
 

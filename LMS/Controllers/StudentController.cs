@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 [assembly: InternalsVisibleTo( "LMSControllerTests" )]
@@ -75,8 +76,21 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student</param>
         /// <returns>The JSON array</returns>
         public IActionResult GetMyClasses(string uid)
-        {           
-            return Json(null);
+        {
+            var query = from e in db.Enrolleds
+                        join cl in db.Classes on e.ClassId equals cl.ClassId
+                        join c in db.Courses on cl.CourseId equals c.CourseId
+                        where e.UId == uid
+                        select new
+                        {
+                            subject = c.Subject,
+                            number = c.Num,
+                            name = c.Name,
+                            season = cl.Season,
+                            year = cl.Semester,
+                            grade = e.Grade == null ? "P" : e.Grade
+                        };
+            return Json(query.ToArray());
         }
 
         /// <summary>
@@ -94,8 +108,22 @@ namespace LMS.Controllers
         /// <param name="uid"></param>
         /// <returns>The JSON array</returns>
         public IActionResult GetAssignmentsInClass(string subject, int num, string season, int year, string uid)
-        {            
-            return Json(null);
+        {
+            var query = from e in db.Enrolleds
+                        join cl in db.Classes on e.ClassId equals cl.ClassId
+                        join c in db.Courses on cl.CourseId equals c.CourseId
+                        join ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
+                        join a in db.Assignments on ac.CategoryId equals a.CategoryId
+                        //join s in db.Submissions on a.AssignId equals s.AssignId
+                        where e.UId == uid && c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year
+                        select new
+                        {
+                            aname = a.Name,
+                            cname = c.Name,
+                            due = a.Due,
+                            score = 0
+                        };
+            return Json(query.ToArray());
         }
 
 
@@ -119,7 +147,32 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = true/false}</returns>
         public IActionResult SubmitAssignmentText(string subject, int num, string season, int year,
           string category, string asgname, string uid, string contents)
-        {           
+        {
+            var query = from e in db.Enrolleds
+                        join cl in db.Classes on e.ClassId equals cl.ClassId
+                        join c in db.Courses on cl.CourseId equals c.CourseId
+                        join ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
+                        join a in db.Assignments on ac.CategoryId equals a.CategoryId
+                        where e.UId == uid && c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year && ac.Name == category && a.Name == asgname
+                        select new
+                        {
+                            assignID = a.AssignId
+                        };
+
+            if (query.Any())
+            {
+                Submission s = new Submission();
+                s.UId = uid;
+                s.AssignId = query.First().assignID;
+                s.Time = DateTime.Now;
+                s.Contents = contents;
+                db.Submissions.Add(s);
+                db.SaveChanges();
+
+
+                return Json(new { success = true });
+            }
+
             return Json(new { success = false });
         }
 
@@ -135,7 +188,25 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = {true/false}. 
         /// false if the student is already enrolled in the class, true otherwise.</returns>
         public IActionResult Enroll(string subject, int num, string season, int year, string uid)
-        {          
+        {
+           
+            // get class ID, enroll student to that class ID
+            var query = from c in db.Courses join cl in db.Classes on c.CourseId equals cl.CourseId
+                        where c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year
+                        select new
+                        {
+                            id = cl.ClassId
+                        };
+
+            if(query.Any())
+            {
+                Enrolled e = new Enrolled();
+                e.UId = uid;
+                e.ClassId = query.First().id;
+                db.Enrolleds.Add(e);
+                db.SaveChanges();
+                return Json(new { success = true });
+            }
             return Json(new { success = false});
         }
 
