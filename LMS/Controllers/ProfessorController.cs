@@ -118,7 +118,24 @@ namespace LMS_CustomIdentity.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetStudentsInClass(string subject, int num, string season, int year)
         {
-            return Json(null);
+            var query = from c in db.Courses
+                        join
+                        cl in db.Classes on c.CourseId equals cl.CourseId
+                        join
+                        e in db.Enrolleds on cl.ClassId equals e.ClassId
+                        join
+                        s in db.Students on e.UId equals s.UId
+                        where c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year
+                        select new
+                        {
+                            fname = s.FirstName,
+                            lname = s.LastName,
+                            uid = s.UId,
+                            dob = s.Dob,
+                            grade = e.Grade,
+                        };
+                        
+            return Json(query.ToArray());
         }
 
 
@@ -251,22 +268,28 @@ namespace LMS_CustomIdentity.Controllers
                         join
                         ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId 
                         join a in db.Assignments on ac.CategoryId equals a.CategoryId
-                        where c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year && ac.Name == category && a.Name == asgname && a.MaxPoints == asgpoints
-                        && a.Due == asgdue && a.Contents == asgcontents
-                        select ac;
-            if (query.Any())
+                        where c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year && ac.Name == category
+                        select new
+                        {
+                            categoryid = ac.CategoryId,
+                        };
+
+            if (!query.Any())
             {
                 return Json(new { success = false });
             }
+                Assignment assign = new Assignment();
+                assign.Name = asgname;
+                assign.Contents = asgcontents;
+                assign.Due = asgdue;
+                assign.CategoryId = query.First().categoryid;
+                assign.MaxPoints = (uint)asgpoints;
+                db.Assignments.Add(assign);
+                db.SaveChanges();
+                return Json(new { success = true });
 
-            Assignment assign = new Assignment();
-            assign.Name = asgname;
-            assign.Contents = asgcontents;
-            assign.Due = asgdue;
-            assign.MaxPoints = (uint)asgpoints;
-            db.Assignments.Add(assign);
-            db.SaveChanges();
-            return Json(new { success = true });
+            
+            
         }
 
 
