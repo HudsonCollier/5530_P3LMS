@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Mvc;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 [assembly: InternalsVisibleTo( "LMSControllerTests" )]
@@ -170,7 +171,50 @@ namespace LMS.Controllers
         /// or an object containing {success: false} if the user doesn't exist
         /// </returns>
         public IActionResult GetUser(string uid)
-        {           
+        {
+            var student = from s in db.Students
+                          where s.UId == uid
+                          select new
+                          {
+                              fname = s.FirstName,  
+                              lname = s.LastName,
+                              department = s.Major,
+                              uid = s.UId
+                       
+                          };
+
+            var professor = from p in db.Professors
+                            where p.UId == uid
+                            select new
+                            {
+                                fname = p.FirstName,
+                                lname = p.LastName,
+                                department = p.Department,
+                                uid = p.UId
+
+                            };
+
+            var admin = from a in db.Admins
+                        where a.UId == uid
+                        select new
+                        {
+                            fname = a.FirstName,
+                            lname = a.LastName,
+                            uid = a.UId
+                        };
+
+            if (student.Any())
+            {
+            return Json(student.ToArray().First());
+            }
+            if (professor.Any())
+            {
+                return Json(professor.ToArray().First());
+            }
+            if (admin.Any())
+            {
+                return Json(admin.ToArray().First());
+            }
             return Json(new { success = false });
         }
 
