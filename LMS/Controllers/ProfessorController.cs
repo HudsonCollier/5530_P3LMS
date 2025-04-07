@@ -262,34 +262,39 @@ namespace LMS_CustomIdentity.Controllers
         /// <returns>A JSON object containing success = true/false</returns>
         public IActionResult CreateAssignment(string subject, int num, string season, int year, string category, string asgname, int asgpoints, DateTime asgdue, string asgcontents)
         {
-            var query = from c in db.Courses
+            // Checks if the assignment category exists
+            var categoryQuery = from c in db.Courses
                         join
                         cl in db.Classes on c.CourseId equals cl.CourseId
                         join
-                        ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId 
-                        join a in db.Assignments on ac.CategoryId equals a.CategoryId
+                        ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
                         where c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year && ac.Name == category
-                        select new
-                        {
-                            categoryid = ac.CategoryId,
-                        };
+                        select ac;
 
-            if (!query.Any())
+            // Sets to null if the category does not exists
+            var assignCategory = categoryQuery.FirstOrDefault();
+
+            if (assignCategory == null)
             {
-                return Json(new { success = false });
+                return Json(new { success = false }); 
             }
-                Assignment assign = new Assignment();
-                assign.Name = asgname;
-                assign.Contents = asgcontents;
-                assign.Due = asgdue;
-                assign.CategoryId = query.First().categoryid;
-                assign.MaxPoints = (uint)asgpoints;
-                db.Assignments.Add(assign);
-                db.SaveChanges();
-                return Json(new { success = true });
 
-            
-            
+            bool assignmentExists = db.Assignments.Any(assign => assign.CategoryId == assignCategory.CategoryId && assign.Name == asgname);
+
+            if (assignmentExists)
+            {
+                return Json(new { success = false }); 
+            }
+
+            Assignment assign = new Assignment();
+            assign.Name = asgname;
+            assign.Contents = asgcontents;
+            assign.Due = asgdue;
+            assign.CategoryId = assignCategory.CategoryId;
+            assign.MaxPoints = (uint)asgpoints;
+            db.Assignments.Add(assign);
+            db.SaveChanges();
+            return Json(new { success = true });
         }
 
 
