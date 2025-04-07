@@ -165,13 +165,13 @@ namespace LMS_CustomIdentity.Controllers
                         ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
                         join
                         a in db.Assignments on ac.CategoryId equals a.CategoryId
+                        where subject == c.Subject && num == c.Num && season == cl.Season && year == cl.Semester && category == ac.Name
                         select new
                         {
                             aname = a.Name,
                             cname = ac.Name,
                             due = a.Due,
                             submissions = a.Submissions.Count,
-
                         };
             return Json(query.ToArray());
         }
