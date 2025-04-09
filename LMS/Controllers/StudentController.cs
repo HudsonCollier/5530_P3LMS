@@ -119,14 +119,12 @@ namespace LMS.Controllers
                         select new
                         {
                             aname = a.Name,
-                            cname = c.Name,
+                            cname = ac.Name,
                             due = a.Due,
                             score = 0
                         };
             return Json(query.ToArray());
         }
-
-
 
         /// <summary>
         /// Adds a submission to the given assignment for the given student
@@ -154,28 +152,39 @@ namespace LMS.Controllers
                         join ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
                         join a in db.Assignments on ac.CategoryId equals a.CategoryId
                         where e.UId == uid && c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year && ac.Name == category && a.Name == asgname
-                        select new
-                        {
-                            assignID = a.AssignId
-                        };
-
-            if (query.Any())
+                        select a;
+            
+            var assignment = query.FirstOrDefault();
+            if (assignment == null)
             {
-                Submission s = new Submission();
-                s.UId = uid;
-                s.AssignId = query.First().assignID;
-                s.Time = DateTime.Now;
-                s.Contents = contents;
-                db.Submissions.Add(s);
-                db.SaveChanges();
-
-
-                return Json(new { success = true });
+                return Json(new { success = false });
             }
 
-            return Json(new { success = false });
-        }
+            var subQuery = from q in query
+                           join sb in db.Submissions on q.AssignId equals sb.AssignId
+                           where sb.UId == uid
+                           select sb;
 
+            var submit = subQuery.FirstOrDefault();
+            if (submit != null)
+            {
+                db.Submissions.Remove(submit);
+                db.SaveChanges();
+            }
+
+            Submission s = new Submission();
+            s.UId = uid;
+            s.AssignId = assignment.AssignId;
+            s.Time = DateTime.Now;
+            s.Contents = contents;
+            db.Submissions.Add(s);
+            db.SaveChanges();
+
+            return Json(new { success = true });
+
+
+
+        }
 
         /// <summary>
         /// Enrolls a student in a class.
@@ -210,8 +219,6 @@ namespace LMS.Controllers
             return Json(new { success = false});
         }
 
-
-
         /// <summary>
         /// Calculates a student's GPA
         /// A student's GPA is determined by the grade-point representation of the average grade in all their classes.
@@ -224,12 +231,17 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student</param>
         /// <returns>A JSON object containing a single field called "gpa" with the number value</returns>
         public IActionResult GetGPA(string uid)
-        {            
+        {
+            //var query = from ac in db.AssignmentCategories
+            //            join a in db.Assignments on ac.CategoryId equals a.CategoryId
+            //            join s in db.Submissions on a.AssignId equals s.AssignId
+            //            where s.UId == uid 
             return Json(null);
         }
-                
-        /*******End code to modify********/
 
+
+
+        /*******End code to modify********/
     }
 }
 

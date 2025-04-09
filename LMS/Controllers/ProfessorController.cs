@@ -274,14 +274,7 @@ namespace LMS_CustomIdentity.Controllers
             // Sets to null if the category does not exists
             var assignCategory = categoryQuery.FirstOrDefault();
 
-            if (assignCategory == null)
-            {
-                return Json(new { success = false }); 
-            }
-
-            bool assignmentExists = db.Assignments.Any(assign => assign.CategoryId == assignCategory.CategoryId && assign.Name == asgname);
-
-            if (assignmentExists)
+            if (assignCategory == null || db.Assignments.Any(assign => assign.CategoryId == assignCategory.CategoryId && assign.Name == asgname))
             {
                 return Json(new { success = false }); 
             }
@@ -317,7 +310,24 @@ namespace LMS_CustomIdentity.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetSubmissionsToAssignment(string subject, int num, string season, int year, string category, string asgname)
         {
-            return Json(null);
+            var query = from c in db.Courses
+                        join
+                        cl in db.Classes on c.CourseId equals cl.CourseId
+                        join
+                        ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
+                        join a in db.Assignments on ac.CategoryId equals a.CategoryId
+                        join s in db.Submissions on a.AssignId equals s.AssignId
+                        join st in db.Students on s.UId equals st.UId
+                        where c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year && ac.Name == category && a.Name == asgname
+                        select new
+                        {
+                            fname = st.FirstName,
+                            lname = st.LastName,
+                            uid = st.UId,
+                            time = s.Time,
+                            score = s.Score,
+                        };
+            return Json(query.ToArray());
         }
 
 

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.VisualBasic;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -37,8 +38,6 @@ namespace LMS.Controllers
                      
         }
 
-
-
         /// <summary>
         /// Returns a JSON array representing the course catalog.
         /// Each object in the array should have the following fields:
@@ -69,7 +68,6 @@ namespace LMS.Controllers
             return Json(query.ToArray());
         }
 
-
         /// <summary>
         /// Returns a JSON array of all class offerings of a specific course.
         /// Each object in the array should have the following fields:
@@ -92,7 +90,6 @@ namespace LMS.Controllers
                         join p in db.Professors
                         on cl.Teacher equals p.UId
                         where c.Subject == subject && c.Num == number
-
                         select new
                         {
                             season = cl.Season,
@@ -102,7 +99,6 @@ namespace LMS.Controllers
                             end = cl.EndTime,
                             fname = p.FirstName,
                             lname = p.LastName,
-                            
                         };
 
             return Json(query.ToArray());
@@ -130,9 +126,8 @@ namespace LMS.Controllers
                         {
                             contents = a.Contents
                         };
-            return Content(query.ToString());
+            return Content(query.First().contents);
         }
-
 
         /// <summary>
         /// This method does NOT return JSON. It returns plain text (containing html).
@@ -149,8 +144,22 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student who submitted it</param>
         /// <returns>The submission text</returns>
         public IActionResult GetSubmissionText(string subject, int num, string season, int year, string category, string asgname, string uid)
-        {            
-            return Content("");
+        {
+            var query = from e in db.Enrolleds
+                        join cl in db.Classes on e.ClassId equals cl.ClassId
+                        join c in db.Courses on cl.CourseId equals c.CourseId
+                        join ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
+                        join a in db.Assignments on ac.CategoryId equals a.CategoryId
+                        join s in db.Submissions on a.AssignId equals s.AssignId
+                        where e.UId == uid && s.UId == e.UId && c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year && ac.Name == category && a.Name == asgname
+                        select s;
+            var submission = query.FirstOrDefault();
+            if (submission == null)
+            {
+                return Content("");
+            }
+
+            return Content(submission.Contents);
         }
 
 
@@ -180,7 +189,6 @@ namespace LMS.Controllers
                               lname = s.LastName,
                               department = s.Major,
                               uid = s.UId
-                       
                           };
 
             var professor = from p in db.Professors
@@ -191,7 +199,6 @@ namespace LMS.Controllers
                                 lname = p.LastName,
                                 department = p.Department,
                                 uid = p.UId
-
                             };
 
             var admin = from a in db.Admins
@@ -217,7 +224,6 @@ namespace LMS.Controllers
             }
             return Json(new { success = false });
         }
-
 
         /*******End code to modify********/
     }
