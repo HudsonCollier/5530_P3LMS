@@ -151,7 +151,7 @@ namespace LMS.Controllers
                         join ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
                         join a in db.Assignments on ac.CategoryId equals a.CategoryId
                         join s in db.Submissions on a.AssignId equals s.AssignId
-                        where e.UId == uid && s.UId == e.UId && c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year && ac.Name == category && a.Name == asgname
+                        where e.UId == uid && s.UId == uid && c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year && ac.Name == category && a.Name == asgname
                         select s;
             var submission = query.FirstOrDefault();
             if (submission == null)

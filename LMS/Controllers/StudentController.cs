@@ -7,6 +7,8 @@ using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.EntityFrameworkCore;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 [assembly: InternalsVisibleTo( "LMSControllerTests" )]
@@ -88,7 +90,7 @@ namespace LMS.Controllers
                             name = c.Name,
                             season = cl.Season,
                             year = cl.Semester,
-                            grade = e.Grade == null ? "P" : e.Grade
+                            grade = e.Grade == null ? "--" : e.Grade
                         };
             return Json(query.ToArray());
         }
@@ -109,21 +111,35 @@ namespace LMS.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetAssignmentsInClass(string subject, int num, string season, int year, string uid)
         {
+            // get all assignments, then check if each assignment has submission
             var query = from e in db.Enrolleds
+                        join st in db.Students on e.UId equals st.UId
                         join cl in db.Classes on e.ClassId equals cl.ClassId
                         join c in db.Courses on cl.CourseId equals c.CourseId
                         join ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
                         join a in db.Assignments on ac.CategoryId equals a.CategoryId
-                        //join s in db.Submissions on a.AssignId equals s.AssignId
                         where e.UId == uid && c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year
                         select new
                         {
-                            aname = a.Name,
-                            cname = ac.Name,
-                            due = a.Due,
-                            score = 0
+                            assign = a,
+                            assignCat = ac,
+                            
                         };
-            return Json(query.ToArray());
+            var query2 = from q in query
+                         join s in db.Submissions
+                         on new { A = q.assign.AssignId, B = uid } equals new { A = s.AssignId, B = s.UId }
+                         into joined
+                         from j in joined.DefaultIfEmpty()
+                         select new { 
+                             score = j.Score,
+                             aname = q.assign.Name,
+                             cname = q.assignCat.Name,
+                             due = q.assign.Due,
+                         };
+
+
+            return Json(query2.ToArray());
+
         }
 
         /// <summary>
@@ -232,13 +248,57 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing a single field called "gpa" with the number value</returns>
         public IActionResult GetGPA(string uid)
         {
-            //var query = from ac in db.AssignmentCategories
-            //            join a in db.Assignments on ac.CategoryId equals a.CategoryId
-            //            join s in db.Submissions on a.AssignId equals s.AssignId
-            //            where s.UId == uid 
-            return Json(null);
+            // Find students classes
+            var assignments = from e in db.Enrolleds join cl in db.Classes on e.ClassId equals cl.ClassId
+                          join ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
+                          join a in db.Assignments on ac.CategoryId equals a.CategoryId
+                          join s in db.Submissions on a.AssignId equals s.AssignId
+                          where s.UId == uid
+                          select new
+                          {
+                              e,
+                              classID = cl.ClassId,
+                              score = s.Score == null ? 0 : s.Score,
+                              weight = ac.Weight,
+                              maxPoints = a.MaxPoints,
+                          };
+            // calculate grade for each class
+            Dictionary<uint, double> classGrades = new Dictionary<uint, double>(); // grades associated with each class
+            Dictionary<uint, int> numberOfSubmissions = new Dictionary<uint, int>(); // holds number of assignment submissions per class
+            double runningGpa = 0;
+                foreach(var submission in assignments.ToList())
+                {
+                    numberOfSubmissions[submission.classID] = numberOfSubmissions.GetValueOrDefault(submission.classID) + 1;
+                    double? grade = (double)((submission.score  / submission.maxPoints) * (submission.weight));
+                    double gradeValue = grade == null ? 0 : grade.Value;
+                    double currentGrade = classGrades.GetValueOrDefault(submission.classID);
+                    classGrades[submission.classID] = (currentGrade + gradeValue) / numberOfSubmissions[submission.classID];
+
+                    runningGpa = classGrades[submission.classID] / classGrades.Count;
+                    submission.e.Grade = ConvertToLetterGrade(classGrades[submission.classID]);
+                }
+            double finalGpa = runningGpa;
+            db.SaveChanges();
+
+            return Json(new { gpa = finalGpa });
+
         }
 
+        private string ConvertToLetterGrade(double gpa)
+        {
+            if (gpa >= 4.0) return "A";
+            else if (gpa >= 3.7) return "A-";
+            else if (gpa >= 3.3) return "B+";
+            else if (gpa >= 3.0) return "B";
+            else if (gpa >= 2.7) return "B-";
+            else if (gpa >= 2.3) return "C+";
+            else if (gpa >= 2.0) return "C";
+            else if (gpa >= 1.7) return "C-";
+            else if (gpa >= 1.3) return "D+";
+            else if (gpa >= 1.0) return "D";
+            else if (gpa >= 0.7) return "D-";
+            else return "E";
+        }
 
 
         /*******End code to modify********/
