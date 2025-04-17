@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Implemented by Hudson Collier and Ian Kerr
+// Last Edited: April 16, 2025
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -35,7 +38,6 @@ namespace LMS.Controllers
             var query = from d in db.Departments
                         select d;
             return Json(query.ToArray());
-                     
         }
 
         /// <summary>
@@ -64,7 +66,6 @@ namespace LMS.Controllers
                                            cname = c.Name,
                                        }).ToArray()
                         };
-
             return Json(query.ToArray());
         }
 

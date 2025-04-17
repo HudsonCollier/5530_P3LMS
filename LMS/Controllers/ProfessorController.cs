@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Implemented by Hudson Collier and Ian Kerr
+// Last Edited: April 16, 2025
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -134,7 +137,6 @@ namespace LMS_CustomIdentity.Controllers
                             dob = s.Dob,
                             grade = e.Grade,
                         };
-                        
             return Json(query.ToArray());
         }
 
@@ -177,7 +179,6 @@ namespace LMS_CustomIdentity.Controllers
                             };
 
                 return Json(query.ToArray());
-
             }
 
 
@@ -253,10 +254,6 @@ namespace LMS_CustomIdentity.Controllers
                             classId = cl.ClassId,
                             categoryName = ac.Name
                         };
-
-           
-
-
             if (query.First().categoryName == category)
             {
                 return Json(new { success = false });
@@ -419,8 +416,6 @@ namespace LMS_CustomIdentity.Controllers
                         };
             return Json(query.ToArray());
         }
-
-        
         /*******End code to modify********/
     }
 }

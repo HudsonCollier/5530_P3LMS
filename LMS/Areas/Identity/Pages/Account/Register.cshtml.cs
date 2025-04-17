@@ -1,5 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// Last Edited: April 16, 2025
+// Partially Implemented by: Hudson Collier and Ian Kerr
+
 #nullable disable
 
 using System;
@@ -128,9 +131,6 @@ namespace LMS.Areas.Identity.Pages.Account
         {
             ReturnUrl = returnUrl;
             ExternalLogins = ( await _signInManager.GetExternalAuthenticationSchemesAsync() ).ToList();
-
-
-
         }
 
         public async Task<IActionResult> OnPostAsync( string returnUrl = null )
@@ -205,7 +205,6 @@ namespace LMS.Areas.Identity.Pages.Account
                 db.Students.Add( s );
                 db.SaveChanges();
                 return s.UId;
-              
             }
 
             else if (role == "Administrator")
@@ -218,7 +217,6 @@ namespace LMS.Areas.Identity.Pages.Account
                 db.Admins.Add(a);
                 db.SaveChanges();
                 return a.UId;
-
             }
 
             else if (role == "Professor")
@@ -232,12 +230,15 @@ namespace LMS.Areas.Identity.Pages.Account
                 db.Professors.Add(p);
                 db.SaveChanges();
                 return p.UId;
-
             }
 
             return "unknown";
         }
 
+        /// <summary>
+        /// Generates a new UID for Students, Admins and Professors
+        /// </summary>
+        /// <returns>The users UID</returns>
         private string generateNewUID()
         {
             string studentUID = db.Students
@@ -277,8 +278,6 @@ namespace LMS.Areas.Identity.Pages.Account
 
             return "u" + newUID.ToString("D7");
         }
-
-
         /*******End code to modify********/
     }
 }

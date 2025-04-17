@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Implemented by Hudson Collier and Ian Kerr
+// Last Edited: April 16, 2025
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -139,7 +142,6 @@ namespace LMS.Controllers
 
 
             return Json(query2.ToArray());
-
         }
 
         /// <summary>
@@ -197,9 +199,6 @@ namespace LMS.Controllers
             db.SaveChanges();
 
             return Json(new { success = true });
-
-
-
         }
 
         /// <summary>
@@ -281,7 +280,6 @@ namespace LMS.Controllers
             db.SaveChanges();
 
             return Json(new { gpa = finalGpa });
-
         }
 
         private string ConvertToLetterGrade(double gpa)
@@ -299,8 +297,6 @@ namespace LMS.Controllers
             else if (gpa >= 0.7) return "D-";
             else return "E";
         }
-
-
         /*******End code to modify********/
     }
 }
