@@ -11,9 +11,6 @@ namespace LMSControllerTests
 {
     public class UnitTest1
     {
-        // Uncomment the methods below after scaffolding
-        // (they won't compile until then)
-
         [Fact]
         public void Test1()
         {

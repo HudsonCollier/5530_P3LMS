@@ -1,11 +1,16 @@
-﻿using System;
+﻿// Implemented by Hudson Collier and Ian Kerr
+// Last Edited: April 18, 2025
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 [assembly: InternalsVisibleTo( "LMSControllerTests" )]
@@ -58,12 +63,18 @@ namespace LMS.Controllers
                 return Json(new { success = false });
             }
 
-            Department dNew = new Department();
-            dNew.Name = name;
-            dNew.Subject = subject;
-            db.Departments.Add(dNew);
-            db.SaveChanges();
-            return Json(new { success = true });
+            try
+            {
+                Department dNew = new Department();
+                dNew.Name = name;
+                dNew.Subject = subject;
+                db.Departments.Add(dNew);
+                db.SaveChanges();
+                return Json(new { success = true });
+            } catch (Exception)
+            {
+                return Json(new { success = false });
+            }
         }
 
 
@@ -77,12 +88,15 @@ namespace LMS.Controllers
         /// <returns>The JSON result</returns>
         public IActionResult GetCourses(string subject)
         {
-            var query = from d in db.Departments where d.Subject == subject select d.Courses;
-            if (query.Any())
-            {
-                return Json(query.ToArray());
-            }
-            return Json(null);
+            var query = from d in db.Departments
+                        join c in db.Courses on d.Subject equals c.Subject
+                        where d.Subject == subject
+                        select new
+                        {
+                            number = c.Num,
+                            name = c.Name,
+                        };
+            return Json(query.ToList());
         }
 
         /// <summary>
@@ -96,9 +110,17 @@ namespace LMS.Controllers
         /// <returns>The JSON result</returns>
         public IActionResult GetProfessors(string subject)
         {
-            
-            return Json(null);
-            
+            var query = from d in db.Departments
+                        join p in db.Professors on d.Subject equals p.Department
+                        where d.Subject == subject
+                        select new
+                        {
+                            lname = p.LastName,
+                            fname = p.FirstName,
+                            uid = p.UId,
+                        };
+
+            return Json(query.ToArray());
         }
 
 
@@ -113,8 +135,28 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = true/false}.
         /// false if the course already exists, true otherwise.</returns>
         public IActionResult CreateCourse(string subject, int number, string name)
-        {           
-            return Json(new { success = false });
+        {
+            var query = from c in db.Courses
+                        where c.Subject == subject && c.Num == number && c.Name == name
+                        select c;
+            if (query.Any())
+            {
+                return Json(new { success = false });
+            }
+
+            try
+            {
+                Course course = new Course();
+                course.Subject = subject;
+                course.Num = (uint)number;
+                course.Name = name;
+                db.Add(course);
+                db.SaveChanges();
+                return Json(new { success = true });
+            } catch(Exception)
+            {
+                return Json(new { success = false });
+            }
         }
 
 
@@ -136,8 +178,48 @@ namespace LMS.Controllers
         /// a Class offering of the same Course in the same Semester,
         /// true otherwise.</returns>
         public IActionResult CreateClass(string subject, int number, string season, int year, DateTime start, DateTime end, string location, string instructor)
-        {            
-            return Json(new { success = false});
+        {
+            var courseQuery = from c in db.Courses
+                              where c.Subject == subject && c.Num == number
+                              select new
+                              {
+                                  id = c.CourseId
+                              };
+
+            if (courseQuery.Any())
+            {
+
+                var classQuery = from q in courseQuery
+                                 join cl in db.Classes on q.id equals cl.CourseId
+                                 where cl.Season == season && cl.Semester == year && cl.StartTime == TimeOnly.FromDateTime(start) && cl.EndTime == TimeOnly.FromDateTime(end) && cl.Location == location
+                                 select cl;
+
+
+                if (classQuery.Any())
+                {
+                    return Json(new { success = false });
+                }
+
+                try
+                {
+                    Class cla = new Class();
+                    cla.StartTime = TimeOnly.FromDateTime(start);
+                    cla.EndTime = TimeOnly.FromDateTime(end);
+                    cla.Location = location;
+                    cla.Season = season;
+                    cla.Semester = (uint)year;
+                    cla.Teacher = instructor;
+                    cla.CourseId = courseQuery.First().id;
+                    db.Add(cla);
+                    db.SaveChanges();
+                    return Json(new { success = true });
+                } catch(Exception e)
+                {
+                    return Json(new { success = false });
+                }
+
+            }
+            return Json(new { success = false });
         }
 
 

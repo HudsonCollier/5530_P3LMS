@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -95,7 +96,8 @@ namespace LMS.Controllers
                             year = cl.Semester,
                             grade = e.Grade == null ? "--" : e.Grade
                         };
-            return Json(query.ToArray());
+      
+                return Json(query.ToList());
         }
 
         /// <summary>
@@ -213,8 +215,6 @@ namespace LMS.Controllers
         /// false if the student is already enrolled in the class, true otherwise.</returns>
         public IActionResult Enroll(string subject, int num, string season, int year, string uid)
         {
-           
-            // get class ID, enroll student to that class ID
             var query = from c in db.Courses join cl in db.Classes on c.CourseId equals cl.CourseId
                         where c.Subject == subject && c.Num == num && cl.Season == season && cl.Semester == year
                         select new
@@ -222,16 +222,27 @@ namespace LMS.Controllers
                             id = cl.ClassId
                         };
 
-            if(query.Any())
+            var targetClass = query.FirstOrDefault();
+
+            if (targetClass == null)
             {
-                Enrolled e = new Enrolled();
-                e.UId = uid;
-                e.ClassId = query.First().id;
-                db.Enrolleds.Add(e);
-                db.SaveChanges();
-                return Json(new { success = true });
+                return Json(new { success = false });
             }
-            return Json(new { success = false});
+
+            var checkEnrollment = from en in db.Enrolleds
+                                  where en.ClassId == targetClass.id && en.UId == uid
+                                  select en;
+
+            if (checkEnrollment.FirstOrDefault() != null)
+            {
+                return Json(new { success = false });
+            }
+            Enrolled e = new Enrolled();
+            e.UId = uid;
+            e.ClassId = query.First().id;
+            db.Enrolleds.Add(e);
+            db.SaveChanges();
+            return Json(new { success = true });
         }
 
         /// <summary>
@@ -247,55 +258,47 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing a single field called "gpa" with the number value</returns>
         public IActionResult GetGPA(string uid)
         {
-            // Find students classes
-            var assignments = from e in db.Enrolleds join cl in db.Classes on e.ClassId equals cl.ClassId
-                          join ac in db.AssignmentCategories on cl.ClassId equals ac.ClassId
-                          join a in db.Assignments on ac.CategoryId equals a.CategoryId
-                          join s in db.Submissions on a.AssignId equals s.AssignId
-                          where s.UId == uid
-                          select new
-                          {
-                              e,
-                              classID = cl.ClassId,
-                              score = s.Score == null ? 0 : s.Score,
-                              weight = ac.Weight,
-                              maxPoints = a.MaxPoints,
-                          };
-            // calculate grade for each class
-            Dictionary<uint, double> classGrades = new Dictionary<uint, double>(); // grades associated with each class
-            Dictionary<uint, int> numberOfSubmissions = new Dictionary<uint, int>(); // holds number of assignment submissions per class
-            double runningGpa = 0;
-                foreach(var submission in assignments.ToList())
-                {
-                    numberOfSubmissions[submission.classID] = numberOfSubmissions.GetValueOrDefault(submission.classID) + 1;
-                    double? grade = (double)((submission.score  / submission.maxPoints) * (submission.weight));
-                    double gradeValue = grade == null ? 0 : grade.Value;
-                    double currentGrade = classGrades.GetValueOrDefault(submission.classID);
-                    classGrades[submission.classID] = (currentGrade + gradeValue) / numberOfSubmissions[submission.classID];
+            var query = from e in db.Enrolleds
+                        where e.UId == uid && e.Grade != null
+                        select new
+                        {
+                            e.Grade,
+                        };
 
-                    runningGpa = classGrades[submission.classID] / classGrades.Count;
-                    submission.e.Grade = ConvertToLetterGrade(classGrades[submission.classID]);
-                }
-            double finalGpa = runningGpa;
-            db.SaveChanges();
+            double runningGPA = 0;
+            int classCount = 0;
 
-            return Json(new { gpa = finalGpa });
+            foreach (var grade in query.ToList())
+            {
+                runningGPA += ConvertToGPA(grade.Grade);
+                classCount++;
+            }
+
+            double gpa = classCount > 0 ? runningGPA / classCount : 0.0;
+
+            return Json(new { gpa = Math.Round(gpa, 2) });
         }
+        
 
-        private string ConvertToLetterGrade(double gpa)
+        /// <summary>
+        /// Converts the letter grade to the corresponding GPA
+        /// </summary>
+        /// <param name="letterGrade"></param>
+        /// <returns></returns>
+        private double ConvertToGPA(string letterGrade)
         {
-            if (gpa >= 4.0) return "A";
-            else if (gpa >= 3.7) return "A-";
-            else if (gpa >= 3.3) return "B+";
-            else if (gpa >= 3.0) return "B";
-            else if (gpa >= 2.7) return "B-";
-            else if (gpa >= 2.3) return "C+";
-            else if (gpa >= 2.0) return "C";
-            else if (gpa >= 1.7) return "C-";
-            else if (gpa >= 1.3) return "D+";
-            else if (gpa >= 1.0) return "D";
-            else if (gpa >= 0.7) return "D-";
-            else return "E";
+            if (letterGrade == "A") return 4.0;
+            else if (letterGrade == "A-") return 3.7;
+            else if (letterGrade == "B+") return 3.3;
+            else if (letterGrade == "B") return 3.0;
+            else if (letterGrade == "B-") return 2.7;
+            else if (letterGrade == "C+") return 2.3;
+            else if (letterGrade == "C") return 2.0;
+            else if (letterGrade == "C-") return 1.7;
+            else if (letterGrade == "D+") return 1.3;
+            else if (letterGrade == "D") return 1.0;
+            else if (letterGrade == "D-") return 0.7;
+            else return 0.0;
         }
         /*******End code to modify********/
     }
