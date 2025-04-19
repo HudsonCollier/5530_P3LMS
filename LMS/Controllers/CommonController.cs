@@ -36,7 +36,11 @@ namespace LMS.Controllers
         public IActionResult GetDepartments()
         {
             var query = from d in db.Departments
-                        select d;
+                        select new
+                        {
+                            name = d.Name,
+                            subject = d.Subject
+                        };
             return Json(query.ToArray());
         }
 

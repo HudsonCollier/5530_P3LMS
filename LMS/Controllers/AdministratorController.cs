@@ -137,7 +137,7 @@ namespace LMS.Controllers
         public IActionResult CreateCourse(string subject, int number, string name)
         {
             var query = from c in db.Courses
-                        where c.Subject == subject && c.Num == number && c.Name == name
+                        where c.Subject == subject && c.Num == number
                         select c;
             if (query.Any())
             {

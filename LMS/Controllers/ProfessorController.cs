@@ -266,14 +266,19 @@ namespace LMS_CustomIdentity.Controllers
                     return Json(new { success = false });
 
 
-
-                AssignmentCategory newac = new AssignmentCategory();
-                newac.Name = category;
-                newac.Weight = (uint)catweight;
-                newac.ClassId = query.First().classId;
-                db.AssignmentCategories.Add(newac);
-                db.SaveChanges();
-                return Json(new { success = true });
+                try
+                {
+                    AssignmentCategory newac = new AssignmentCategory();
+                    newac.Name = category;
+                    newac.Weight = (uint)catweight;
+                    newac.ClassId = query.First().classId;
+                    db.AssignmentCategories.Add(newac);
+                    db.SaveChanges();
+                    return Json(new { success = true });
+                } catch (Exception)
+                {
+                    return Json(new { success = false });
+                }
             }
             return Json(new { success = false });
         }
@@ -310,15 +315,23 @@ namespace LMS_CustomIdentity.Controllers
                 return Json(new { success = false }); 
             }
 
-            Assignment assign = new Assignment();
-            assign.Name = asgname;
-            assign.Contents = asgcontents;
-            assign.Due = asgdue;
-            assign.CategoryId = assignCategory.CategoryId;
-            assign.MaxPoints = (uint)asgpoints;
-            db.Assignments.Add(assign);
-            db.SaveChanges();
 
+            try
+            {
+                Assignment assign = new Assignment();
+                assign.Name = asgname;
+                assign.Contents = asgcontents;
+                assign.Due = asgdue;
+                assign.CategoryId = assignCategory.CategoryId;
+                assign.MaxPoints = (uint)asgpoints;
+                db.Assignments.Add(assign);
+                db.SaveChanges();
+            }
+            catch (Exception)
+            {
+                return Json(new { success = false });
+
+            }
 
             var allStudentsInClass = from e in db.Enrolleds
                                      join cl in db.Classes on e.ClassId equals cl.ClassId
